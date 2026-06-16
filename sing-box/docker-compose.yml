@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Бэкенд: Маршрутизатор трафика -- из доки
+  sing-box:
+    image: dreista/sing-box
+    container_name: sb-backend
+    restart: always
+    volumes:
+      - ./sing-box:/etc/sing-box/  # конфиг sing-box
+      - ./logs:/var/lib/sing-box/  # логи
+    environment:
+      - ENABLE_DEPRECATED_LEGACY_DNS_SERVERS=true  # TODO: переписать конфиг на новый формат DNS
+    command: -D /var/lib/sing-box -C /etc/sing-box/ run
+    networks:
+      - internal_net
+
+  # Фронтенд: NaiveProxy (Caddy) -- частично из документации
+  caddy:
+    image: caddy:2.11.4-alpine
+    container_name: sb-frontend
+    restart: unless-stopped
+    ports:
+      - "443:443/tcp"   # Основной порт для Naive
+      - "80:80/tcp"     # Для получения Let's Encrypt сертификатов
+      - "443:443/udp"
+    volumes:
+      - ./logs:/var/log/caddy  # хранилище логов
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile  # наш конфиг
+      - ./site:/var/www/html  # заглушка сайта
+      - ./caddy_data:/data   # Хранилище сертификатов - сертификат забирается контейнером самостоятельно
+      - ./caddy_config:/config # Конфиг создается самостоятельно
+    depends_on:
+      - sing-box
+    networks:
+      - internal_net
+
+networks:
+  internal_net:
+    driver: bridge

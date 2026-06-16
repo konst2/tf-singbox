@@ -1,0 +1,19 @@
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Terraform
+terraform.tfvars
+.terraform/*
+.tmp/*
+.terraform.lock.hcl
+
+# Terraaform state - local project
+terraform.tfstate
+terraform.tfstate.*
