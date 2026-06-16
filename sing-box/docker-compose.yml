@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   # Бэкенд: Маршрутизатор трафика -- из доки
+  # https://github.com/sagernet/sing-box/pkgs/container/sing-box
   sing-box:
-    image: dreista/sing-box
+    image: ghcr.io/sagernet/sing-box:v1.14.0-alpha.31
     container_name: sb-backend
     restart: always
     volumes:
@@ -16,6 +17,7 @@ services:
       - internal_net
 
   # Фронтенд: NaiveProxy (Caddy) -- частично из документации
+  # https://hub.docker.com/_/caddy
   caddy:
     image: caddy:2.11.4-alpine
     container_name: sb-frontend
