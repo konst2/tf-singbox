@@ -27,7 +27,6 @@ resource "local_file" "sb_config_json" {
 
 resource "null_resource" "deploy" {
     depends_on = [
-        local_file.client_json,
         local_file.caddyfile,
         local_file.sb_config_json
     ]
