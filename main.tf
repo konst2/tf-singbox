@@ -25,8 +25,13 @@ resource "local_file" "sb_config_json" {
     filename = "${path.module}/.tmp/config.json"
 }
 
-# копируем конфиги
-resource "null_resource" "copy_configs" {
+resource "null_resource" "deploy" {
+    depends_on = [
+        local_file.client_json,
+        local_file.caddyfile,
+        local_file.sb_config_json
+    ]
+
     # Подключение к физическому серверу
     connection {
         type = "ssh"
@@ -36,7 +41,7 @@ resource "null_resource" "copy_configs" {
         timeout = "90s"
     }
 
-
+    # копируем конфиги
     provisioner "remote-exec" {
         inline = [
             # Создаём все необходимые директории
@@ -66,21 +71,8 @@ resource "null_resource" "copy_configs" {
         source      = "${path.module}/sing-box/site/index.html"
         destination = "/opt/sing-box/site/index.html"
     }
-}
 
-# Запуск контейнеров
-resource "null_resource" "start_containers" {
-    depends_on = [null_resource.copy_configs]
-
-    # Подключение к физическому серверу
-    connection {
-        type = "ssh"
-        host = var.server_ip
-        user = var.server_user
-        password = var.server_password
-        timeout = "90s"
-    }
-
+    # перезапуск контейнеров
     provisioner "remote-exec" {
         inline = [
             # перейдём в каталог 
