@@ -1,4 +1,14 @@
-# создаём конфиги из шаблонов
+# делаем клиентский конфиг
+resource "local_file" "client_json" {
+    content  = templatefile("${path.module}/sing-box/client/client.json.tpl", {
+        connection_login = var.connection_login
+        connection_password = var.connection_password
+        cer_domain = var.cer_domain
+    })
+    filename = "${path.module}/client_config/client.json"
+}
+
+# создаём серверные конфиги из шаблонов
 resource "local_file" "caddyfile" {
     content  = templatefile("${path.module}/sing-box/caddy/Caddyfile.tpl", {
         cer_email  = var.cer_email

@@ -17,3 +17,6 @@ terraform.tfvars
 # Terraaform state - local project
 terraform.tfstate
 terraform.tfstate.*
+
+# client config
+client_config/*
