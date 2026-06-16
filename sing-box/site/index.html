@@ -1,1 +1,542 @@
-prod: ok
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Production Server · techprod.whiteants.net</title>
+    <meta name="description" content="Production environment — high-availability service cluster. AMS-1 region, hardened infrastructure.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f1a, #03060c);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
+            color: #eef4ff;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* tech grid overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* scan line effect */
+        .scan-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0) 0px,
+                rgba(0, 255, 255, 0.02) 2px,
+                rgba(0, 0, 0, 0) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 1280px;
+            width: 100%;
+            backdrop-filter: blur(2px);
+        }
+
+        /* main glass card */
+        .server-card {
+            background: rgba(8, 14, 26, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            border: 1px solid rgba(0, 255, 255, 0.25);
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(0, 255, 255, 0.1) inset;
+            padding: 2.5rem;
+            transition: all 0.2s ease;
+        }
+
+        @media (min-width: 768px) {
+            .server-card {
+                padding: 3rem;
+            }
+        }
+
+        /* badge */
+        .badge-cluster {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 20, 30, 0.7);
+            backdrop-filter: blur(4px);
+            padding: 0.4rem 1rem;
+            border-radius: 60px;
+            border: 1px solid rgba(0, 255, 200, 0.4);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 1.75rem;
+        }
+
+        .status-led {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #0f6;
+            box-shadow: 0 0 6px #0f6;
+            animation: pulse-green 1.8s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { opacity: 0.4; box-shadow: 0 0 0 0 #0f6; }
+            70% { opacity: 1; box-shadow: 0 0 0 6px rgba(0, 255, 102, 0); }
+            100% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(0, 255, 102, 0); }
+        }
+
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #FFFFFF, #9efff0, #3ccfcf);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.75rem;
+        }
+
+        .server-address {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 1rem;
+            color: #7ad0dd;
+            background: rgba(0, 0, 0, 0.35);
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            margin: 0.5rem 0 0.5rem 0;
+            letter-spacing: 0.3px;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+        }
+
+        .subhead {
+            font-size: 1rem;
+            color: #b6d0e8;
+            border-left: 3px solid #2dd4bf;
+            padding-left: 1rem;
+            margin: 1rem 0 1.8rem 0;
+            font-weight: 400;
+        }
+
+        /* metrics static grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1.2rem;
+            margin: 2rem 0 2rem 0;
+        }
+
+        .metric-card {
+            background: rgba(2, 10, 22, 0.6);
+            border-radius: 1.5rem;
+            padding: 1.2rem 1rem;
+            border: 1px solid rgba(46, 212, 200, 0.2);
+            transition: transform 0.2s, border-color 0.2s;
+            backdrop-filter: blur(4px);
+        }
+
+        .metric-card:hover {
+            border-color: rgba(46, 212, 200, 0.6);
+            transform: translateY(-3px);
+            background: rgba(10, 20, 35, 0.7);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+            color: #7b9bc2;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Inter', monospace;
+            letter-spacing: -0.02em;
+            margin-top: 0.5rem;
+            color: #e0f2fe;
+        }
+
+        .metric-sub {
+            font-size: 0.7rem;
+            color: #5f8bb3;
+            margin-top: 0.3rem;
+        }
+
+        /* network status block */
+        .network-status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: rgba(0, 15, 25, 0.5);
+            border-radius: 1.2rem;
+            padding: 1rem 1.2rem;
+            margin: 1.2rem 0;
+            border: 1px solid rgba(46, 212, 200, 0.2);
+        }
+
+        .net-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .net-badge {
+            background: #0f212e;
+            padding: 0.2rem 0.7rem;
+            border-radius: 40px;
+            color: #a0f0ea;
+        }
+
+        .ipv4, .ipv6 {
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 200, 0.4), transparent);
+            margin: 1.8rem 0;
+        }
+
+        /* Neutral abstract capabilities block (no real endpoints) */
+        .capabilities-section {
+            margin: 1.8rem 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #6d9bcf;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .capsule-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+
+        .capsule {
+            background: rgba(0, 15, 25, 0.7);
+            border-radius: 60px;
+            padding: 0.4rem 1.2rem;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.8rem;
+            border: 1px solid rgba(72, 187, 190, 0.4);
+            color: #c3eefc;
+            transition: all 0.2s;
+        }
+
+        .capsule:hover {
+            background: rgba(34, 211, 194, 0.12);
+            border-color: #2dd4bf;
+        }
+
+        /* health row */
+        .health-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .health-status {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            background: rgba(0, 255, 170, 0.05);
+            padding: 0.5rem 1.2rem;
+            border-radius: 60px;
+            font-size: 0.85rem;
+        }
+
+        .footer-note {
+            font-size: 0.7rem;
+            text-align: center;
+            color: #48799f;
+            margin-top: 2rem;
+            border-top: 1px dashed rgba(77, 182, 172, 0.3);
+            padding-top: 1.5rem;
+            letter-spacing: 0.3px;
+        }
+
+        .cli-decoration {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            width: fit-content;
+            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-left: 3px solid #2dd4bf;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #2dd4bf;
+            vertical-align: middle;
+            margin-left: 4px;
+            animation: blink 1s step-end infinite;
+        }
+
+        @media (max-width: 640px) {
+            .server-card {
+                padding: 1.5rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .metric-value {
+                font-size: 1.4rem;
+            }
+            .network-status {
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="scan-line"></div>
+<div class="container">
+    <div class="server-card">
+        <!-- environment badge -->
+        <div class="badge-cluster">
+            <span class="status-led"></span>
+            <span>PRODUCTION · ACTIVE CLUSTER</span>
+            <span style="opacity:0.7;">⎯</span>
+            <span>🔒 TLS 1.3</span>
+        </div>
+
+        <!-- pseudo-terminal -->
+        <div class="cli-decoration">
+            <span style="color:#6ee7b7;">$</span>
+            <span style="color:#b4f0ff;">curl -I https://techprod.whiteants.net/</span>
+            <span class="cursor-blink"></span>
+        </div>
+
+        <h1>✧ production server ✧<br><span style="font-size: 0.6em; display: block; color: #b9e0ff;">high‑availability · zero‑downtime infrastructure</span></h1>
+
+        <!-- explicit server address -->
+        <div class="server-address">
+            https://techprod.whiteants.net/
+        </div>
+
+        <div class="subhead">
+            You have reached a hardened production environment. All systems operational —
+            AMS‑1 region, edge optimized, multilayer security active.
+        </div>
+
+        <!-- static average metrics (no realtime changes) -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span>⏱️</span> UPTIME (AVG)
+                </div>
+                <div class="metric-value">99.8%</div>
+                <div class="metric-sub">rolling 30d · 99.9% SLA</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span>⚡</span> REQUESTS/SEC
+                </div>
+                <div class="metric-value">≈0.1k</div>
+                <div class="metric-sub">rolling 30d · stable trend</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span>🧠</span> MEMORY USAGE
+                </div>
+                <div class="metric-value">≈67.2%</div>
+                <div class="metric-sub">rolling 30d · nominal</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span>🌐</span> AVG ACTIVE CONNS
+                </div>
+                <div class="metric-value">≈0.01k</div>
+                <div class="metric-sub">websocket + http2</div>
+            </div>
+        </div>
+
+        <!-- IPv4 + IPv6 status block (static OK) -->
+        <div class="network-status">
+            <div class="net-item">
+                <span>🌍 IPv4:</span>
+                <span class="net-badge ipv4">195.133.40.188</span>
+                <span style="color:#4ade80;">✓ operational</span>
+            </div>
+            <div class="net-item">
+                <span>🌐 IPv6:</span>
+                <span class="net-badge ipv6">2a03:6f02::5442</span>
+                <span style="color:#4ade80;">✓ operational</span>
+            </div>
+            <div class="net-item">
+                <span>📍 Region:</span>
+                <span class="net-badge">AMS-1 (Amsterdam)</span>
+                <span style="color:#88ccff;">low latency</span>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- NEUTRAL BLOCK: no real endpoints, just abstract service capabilities (cannot be verified) -->
+        <div class="capabilities-section">
+            <div class="section-title">
+                <span>⚙️ ▸ SERVICE CAPABILITIES (internal)</span>
+                <span style="font-size:0.7rem;">• mesh stack •</span>
+            </div>
+            <div class="capsule-list">
+                <div class="capsule">api gateway (rest/graphql)</div>
+                <div class="capsule">realtime event bus</div>
+                <div class="capsule">object storage mesh</div>
+                <div class="capsule">identity provider</div>
+                <div class="capsule">observability pipeline</div>
+                <div class="capsule">edge caching layer</div>
+            </div>
+            <div style="font-size: 0.7rem; margin-top: 0.8rem; color: #6c8fb0; background: rgba(0,0,0,0.2); padding: 0.3rem 0.8rem; border-radius: 30px; display: inline-block;">
+                ⚡ service interfaces — no public endpoint details exposed
+            </div>
+        </div>
+
+        <!-- Health & deployment info -->
+        <div class="health-row">
+            <div class="health-status">
+                <span style="color:#0f6;">🟢</span> <strong>Health check:</strong> PASS · all nodes ready
+            </div>
+            <div class="health-status">
+                <span>📦</span> <strong>Last deploy:</strong> 2026-06-09 11:22:07 UTC
+            </div>
+            <div class="health-status">
+                <span>🔐</span> <strong>SLA:</strong> 99.9% uptime
+            </div>
+        </div>
+
+        <!-- additional technical badges (no sensitive data) -->
+        <div style="display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1.3rem; font-size: 0.7rem;">
+            <span style="background: #0a121f; padding: 0.2rem 0.8rem; border-radius: 20px;">k8s · prod namespace</span>
+            <span style="background: #0a121f; padding: 0.2rem 0.8rem; border-radius: 20px;">istio service mesh</span>
+            <span style="background: #0a121f; padding: 0.2rem 0.8rem; border-radius: 20px;">auto‑scaling: enabled</span>
+            <span style="background: #0a121f; padding: 0.2rem 0.8rem; border-radius: 20px;">WAF + DDoS protection</span>
+        </div>
+
+        <div class="footer-note">
+            PRODUCTION ENVIRONMENT — AUTHORIZED ACCESS ONLY ● ALL TRAFFIC ENCRYPTED (TLS 1.3) ● SECURITY HARDENED ● AMS-1
+        </div>
+    </div>
+</div>
+
+<script>
+    // Very minimal script: only static info and decorative datetime, NO realtime metrics changing.
+    (function() {
+        // set the last deploy timestamp to a realistic static value (already in html)
+        // but we ensure that region badge and network data is correct, no dynamic metric changes.
+
+        // optional: tiny clock update in footer (just for style, not metrics)
+        const footerNote = document.querySelector('.footer-note');
+        if (footerNote && !footerNote.querySelector('.live-timestamp')) {
+            const timestampSpan = document.createElement('span');
+            timestampSpan.style.marginLeft = '12px';
+            timestampSpan.style.fontFamily = 'monospace';
+            timestampSpan.style.fontSize = '0.65rem';
+            timestampSpan.style.opacity = '0.7';
+            timestampSpan.classList.add('live-timestamp');
+            footerNote.appendChild(timestampSpan);
+
+            function updateFootTime() {
+                const d = new Date();
+                // display current UTC time without affecting metrics
+                timestampSpan.innerText = `⏲️ ${d.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
+            }
+            updateFootTime();
+            setInterval(updateFootTime, 1500);
+        }
+
+        // Add a small console greeting (no sensitive info)
+        console.log("%c🚀 Production Server | techprod.whiteants.net | AMS-1 region | IPv4/IPv6 active", "color: #2dd4bf; font-size: 11px; font-weight: bold;");
+
+        // optional: micro-interaction on cards (just UX)
+        const metricCards = document.querySelectorAll('.metric-card');
+        if (metricCards.length) {
+            metricCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    card.style.transform = 'scale(0.98)';
+                    setTimeout(() => { card.style.transform = ''; }, 150);
+                });
+            });
+        }
+
+        // Ensure that IPv4/IPv6 status stays always "operational" — just static correct values.
+        // The values are displayed as static text. No dynamic change.
+        // Also ensure region is displayed exactly as AMS-1
+        const regionBadge = document.querySelector('.net-item:last-child .net-badge');
+        if (regionBadge && regionBadge.innerText !== 'AMS-1 (Amsterdam)') {
+            regionBadge.innerText = 'AMS-1 (Amsterdam)';
+        }
+
+        // small animation to show that connectivity badges are verified (visual only)
+        const netItems = document.querySelectorAll('.net-item span[style*="color:#4ade80"]');
+        netItems.forEach(el => {
+            el.style.opacity = '1';
+        });
+    })();
+</script>
+</body>
+</html>
