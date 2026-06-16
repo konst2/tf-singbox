@@ -56,6 +56,12 @@ terraform apply
 terraform apply
 ```
 
+Если нужно перезапустить без изменений:
+```bash
+terraform state rm null_resource.deploy
+terraform apply
+```
+
 ## Примечание
 
 Для продакшена с сложным конфигурированием лучше взять Ansible.  

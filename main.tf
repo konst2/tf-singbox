@@ -77,9 +77,9 @@ resource "null_resource" "deploy" {
             # перейдём в каталог 
             "cd /opt/sing-box",
             # перезапустим docker
-            "docker compose up -d --force-recreate",
+            "docker-compose up -d --force-recreate",
             # на всякий случай покажем последние логи из docker
-            "docker compose logs --tail=50",
+            "docker-compose logs --tail=50",
             # чистим мусор
             "docker system prune -f"
         ]
